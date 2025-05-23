@@ -271,55 +271,48 @@
             
             // Функция добавления новой задачи
             async function addTask() {
-                const title = taskTitleInput.value.trim();
-                const description = taskDescInput.value.trim();
-                
-                if (!title) {
-                    showError('Пожалуйста, введите название задачи');
-                    return;
-                }
-                
-                try {
-                    const response = await fetch(`${API_URL}/tasks`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            title,
-                            description
-                        }),
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Ошибка при добавлении задачи');
-                    }
-                    
-                    const newTask = await response.json();
-                    
-                    // Обновляем список задач
-                    const currentTasks = Array.from(taskList.children)
-                        .map(item => ({
-                            id: parseInt(item.dataset.id),
-                            title: item.querySelector('.task-title').textContent,
-                            description: item.querySelector('.task-desc')?.textContent || '',
-                            completed: item.classList.contains('completed'),
-                            createdAt: item.querySelector('.task-date').textContent.replace('Добавлено: ', '')
-                        }));
-                    
-                    renderTasks([newTask, ...currentTasks]);
-                    
-                    // Очищаем поля ввода
-                    taskTitleInput.value = '';
-                    taskDescInput.value = '';
-                    taskTitleInput.focus();
-                    
-                    hideError();
-                } catch (error) {
-                    showError('Не удалось добавить задачу. Попробуйте позже.');
-                    console.error('Ошибка:', error);
-                }
-            }
+    const title = taskTitleInput.value.trim();
+    const description = taskDescInput.value.trim();
+    
+    if (!title) {
+        showError('Пожалуйста, введите название задачи');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/tasks`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title,
+                description
+            }),
+        });
+        
+        if (!response.ok) {
+            throw new Error('Ошибка при добавлении задачи');
+        }
+        
+        // Получаем новую задачу с сервера
+        const newTask = await response.json();
+        
+        // Просто перезагружаем весь список задач с сервера
+        // Это надежнее, чем пытаться парсить DOM
+        await loadTasks();
+        
+        // Очищаем поля ввода
+        taskTitleInput.value = '';
+        taskDescInput.value = '';
+        taskTitleInput.focus();
+        
+        hideError();
+    } catch (error) {
+        showError('Не удалось добавить задачу. Попробуйте позже.');
+        console.error('Ошибка:', error);
+    }
+}
             
             // Функция отметки задачи как выполненной
             async function toggleTaskComplete(taskId, isCurrentlyCompleted) {
@@ -389,41 +382,41 @@
             }
             
             // Функция отображения задач
-            function renderTasks(tasks) {
-                if (tasks.length === 0) {
-                    taskList.innerHTML = '<li class="empty-message">Нет задач. Добавьте первую!</li>';
-                    return;
-                }
-                
-                taskList.innerHTML = '';
-                
-                tasks.forEach(task => {
-                    const taskItem = document.createElement('li');
-                    taskItem.className = `task-item ${task.completed ? 'completed' : ''}`;
-                    taskItem.dataset.id = task.id;
-                    
-                    taskItem.innerHTML = `
-                        <div class="task-title">${task.title}</div>
-                        ${task.description ? `<div class="task-desc">${task.description}</div>` : ''}
-                        <div class="task-date">Добавлено: ${formatDate(task.created_at || task.createdAt)}</div>
-                        <div class="task-actions">
-                            <button class="complete-btn">${task.completed ? '✓' : 'Завершить'}</button>
-                            <button class="delete-btn">Удалить</button>
-                        </div>
-                    `;
-                    
-                    taskList.appendChild(taskItem);
-                    
-                    // Добавляем обработчики событий для кнопок
-                    taskItem.querySelector('.complete-btn').addEventListener('click', () => {
-                        toggleTaskComplete(task.id, task.completed);
-                    });
-                    
-                    taskItem.querySelector('.delete-btn').addEventListener('click', () => {
-                        deleteTask(task.id);
-                    });
-                });
-            }
+           function renderTasks(tasks) {
+    if (tasks.length === 0) {
+        taskList.innerHTML = '<li class="empty-message">Нет задач. Добавьте первую!</li>';
+        return;
+    }
+    
+    taskList.innerHTML = '';
+    
+    tasks.forEach(task => {
+        const taskItem = document.createElement('li');
+        taskItem.className = `task-item ${task.completed ? 'completed' : ''}`;
+        taskItem.dataset.id = task.id;
+        
+        taskItem.innerHTML = `
+            <div class="task-title">${task.title}</div>
+            ${task.description ? `<div class="task-desc">${task.description}</div>` : ''}
+            <div class="task-date">Добавлено: ${formatDate(task.created_at || task.createdAt)}</div>
+            <div class="task-actions">
+                <button class="complete-btn">${task.completed ? '✓' : 'Завершить'}</button>
+                <button class="delete-btn">Удалить</button>
+            </div>
+        `;
+        
+        taskList.appendChild(taskItem);
+        
+        // Добавляем обработчики событий
+        taskItem.querySelector('.complete-btn').addEventListener('click', () => {
+            toggleTaskComplete(task.id, task.completed);
+        });
+        
+        taskItem.querySelector('.delete-btn').addEventListener('click', () => {
+            deleteTask(task.id);
+        });
+    });
+}
             
             // Функция форматирования даты
             function formatDate(dateString) {
