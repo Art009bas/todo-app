@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -8,7 +7,7 @@ const port = process.env.PORT || 5000;
 
 // Подключение к вашей базе данных PostgreSQL на Render
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://protokol_db_user:cHHaJl1IUJFjFrpuPWko41lsjjkEaukW@dpg-d0nki98dl3ps73acg24g-a/protokol_db',
+  connectionString: 'postgresql://protokol_db_user:cHHaJl1IUJFjFrpuPWko41lsjjkEaukW@dpg-d0nki98dl3ps73acg24g-a/protokol_db',
   ssl: {
     rejectUnauthorized: false
   }
