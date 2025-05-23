@@ -3,37 +3,61 @@ const { Pool } = require('pg');
 const cors = require('cors');
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 10000;
 
-// Подключение к вашей базе данных PostgreSQL на Render
+// Подключение к PostgreSQL
 const pool = new Pool({
   connectionString: 'postgresql://protokol_db_user:cHHaJl1IUJFjFrpuPWko41lsjjkEaukW@dpg-d0nki98dl3ps73acg24g-a/protokol_db',
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: { rejectUnauthorized: false }
 });
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Проверка подключения к базе данных
-pool.query('SELECT NOW()', (err) => {
-  if (err) {
-    console.error('Ошибка подключения к базе данных:', err);
-  } else {
-    console.log('Успешное подключение к базе данных');
-  }
-});
+// Функция для инициализации базы данных
+async function initializeDatabase() {
+  try {
+    // Проверяем существование таблицы
+    const tableExists = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'tasks'
+      )
+    `);
 
-// Маршруты для задач
+    if (!tableExists.rows[0].exists) {
+      // Создаем таблицу если она не существует
+      await pool.query(`
+        CREATE TABLE tasks (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          description TEXT,
+          completed BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('Таблица tasks успешно создана');
+    } else {
+      console.log('Таблица tasks уже существует');
+    }
+  } catch (err) {
+    console.error('Ошибка при инициализации базы данных:', err);
+  }
+}
+
+// Инициализируем базу данных при запуске сервера
+initializeDatabase();
+
+// Маршруты API
 app.get('/api/tasks', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM tasks ORDER BY created_at DESC');
     res.json(rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
@@ -51,7 +75,7 @@ app.post('/api/tasks', async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
@@ -70,7 +94,7 @@ app.put('/api/tasks/:id', async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
@@ -85,11 +109,11 @@ app.delete('/api/tasks/:id', async (req, res) => {
     res.status(204).end();
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
 // Запуск сервера
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Сервер запущен на http://localhost:${port}`);
 });
