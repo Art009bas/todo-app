@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Простой To-Do List</title>
+    <style>
+        /* Общие стили */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        
+        /* Форма добавления задачи */
+        .task-form {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        /* Список задач */
+        .task-list {
+            list-style: none;
+        }
+        
+        .task-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .task-item.completed {
+            opacity: 0.7;
+            border-left-color: #2ecc71;
+            background: #f8f8f8;
+        }
+        
+        .task-item.completed .task-title {
+            text-decoration: line-through;
+            color: #7f8c8d;
+        }
+        
+        .task-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .task-desc {
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        
+        .task-date {
+            font-size: 12px;
+            color: #bdc3c7;
+        }
+        
+        .task-actions {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .task-actions button {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+        
+        .complete-btn {
+            background: #2ecc71;
+        }
+        
+        .complete-btn:hover {
+            background: #27ae60;
+        }
+        
+        .delete-btn {
+            background: #e74c3c;
+        }
+        
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+        
+        .empty-message {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 20px;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .task-item {
+                padding: 15px;
+            }
+            
+            .task-actions {
+                position: static;
+                margin-top: 10px;
+                justify-content: flex-end;
+            }
+        }
+        
+        /* Анимации */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .task-item {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Мой To-Do List</h1>
+        
+        <div class="task-form">
+            <div class="form-group">
+                <label for="task-title">Название задачи:</label>
+                <input type="text" id="task-title" placeholder="Что нужно сделать?">
+            </div>
+            
+            <div class="form-group">
+                <label for="task-desc">Описание (необязательно):</label>
+                <textarea id="task-desc" placeholder="Подробное описание задачи"></textarea>
+            </div>
+            
+            <button id="add-task-btn">Добавить задачу</button>
+        </div>
+        
+        <ul class="task-list" id="task-list">
+            <!-- Задачи будут добавляться сюда -->
+        </ul>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Элементы DOM
+            const taskTitleInput = document.getElementById('task-title');
+            const taskDescInput = document.getElementById('task-desc');
+            const addTaskBtn = document.getElementById('add-task-btn');
+            const taskList = document.getElementById('task-list');
+            
+            // Загружаем задачи из localStorage при загрузке страницы
+            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+            renderTasks();
+            
+            // Добавление новой задачи
+            addTaskBtn.addEventListener('click', addTask);
+            
+            // Также добавляем задачу по нажатию Enter в поле названия
+            taskTitleInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addTask();
+                }
+            });
+            
+            function addTask() {
+                const title = taskTitleInput.value.trim();
+                const description = taskDescInput.value.trim();
+                
+                if (!title) {
+                    alert('Пожалуйста, введите название задачи');
+                    return;
+                }
+                
+                const newTask = {
+                    id: Date.now(), // Используем timestamp как уникальный ID
+                    title,
+                    description,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+                
+                tasks.unshift(newTask); // Добавляем в начало массива
+                saveTasks();
+                renderTasks();
+                
+                // Очищаем поля ввода
+                taskTitleInput.value = '';
+                taskDescInput.value = '';
+                taskTitleInput.focus();
+            }
+            
+            // Рендеринг списка задач
+            function renderTasks() {
+                if (tasks.length === 0) {
+                    taskList.innerHTML = '<li class="empty-message">Нет задач. Добавьте первую!</li>';
+                    return;
+                }
+                
+                taskList.innerHTML = '';
+                
+                tasks.forEach(task => {
+                    const taskItem = document.createElement('li');
+                    taskItem.className = `task-item ${task.completed ? 'completed' : ''}`;
+                    taskItem.dataset.id = task.id;
+                    
+                    taskItem.innerHTML = `
+                        <div class="task-title">${task.title}</div>
+                        ${task.description ? `<div class="task-desc">${task.description}</div>` : ''}
+                        <div class="task-date">Добавлено: ${formatDate(task.createdAt)}</div>
+                        <div class="task-actions">
+                            <button class="complete-btn">${task.completed ? '✓' : 'Завершить'}</button>
+                            <button class="delete-btn">Удалить</button>
+                        </div>
+                    `;
+                    
+                    taskList.appendChild(taskItem);
+                });
+                
+                // Добавляем обработчики событий для кнопок
+                document.querySelectorAll('.complete-btn').forEach(btn => {
+                    btn.addEventListener('click', toggleTaskComplete);
+                });
+                
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', deleteTask);
+                });
+            }
+            
+            // Переключение статуса задачи (выполнено/не выполнено)
+            function toggleTaskComplete(e) {
+                const taskId = parseInt(e.target.closest('.task-item').dataset.id);
+                const taskIndex = tasks.findIndex(task => task.id === taskId);
+                
+                if (taskIndex !== -1) {
+                    tasks[taskIndex].completed = !tasks[taskIndex].completed;
+                    saveTasks();
+                    renderTasks();
+                }
+            }
+            
+            // Удаление задачи
+            function deleteTask(e) {
+                if (!confirm('Вы уверены, что хотите удалить эту задачу?')) {
+                    return;
+                }
+                
+                const taskId = parseInt(e.target.closest('.task-item').dataset.id);
+                tasks = tasks.filter(task => task.id !== taskId);
+                saveTasks();
+                renderTasks();
+            }
+            
+            // Сохранение задач в localStorage
+            function saveTasks() {
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            }
+            
+            // Форматирование даты
+            function formatDate(dateString) {
+                const options = { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                };
+                return new Date(dateString).toLocaleDateString('ru-RU', options);
+            }
+        });
+    </script>
+</body>
+</html>
