@@ -1,7 +1,7 @@
 {
   "name": "protokol-server",
   "version": "1.0.0",
-  "description": "Server for To-Do List",
+  "description": "Server for To-Do List and Accounting",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
