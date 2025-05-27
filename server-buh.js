@@ -5,6 +5,7 @@ const app = express();
 const port = process.env.PORT || 1001;
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 // Секретный ключ для подписи токена
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
@@ -13,6 +14,59 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://protokol_db_user:cHHaJl1IUJFjFrpuPWko41lsjjkEaukW@dpg-d0nki98dl3ps73acg24g-a/protokol_db',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+app.post('/auth/telegram', express.json({ limit: '1mb' }), async (req, res) => {
+  const { id, first_name, photo_url, auth_date, hash } = req.body;
+
+  // Формируем строку проверки
+  const dataCheckString = Object.keys(req.body)
+    .filter(k => k !== 'hash')
+    .sort()
+    .map(k => `${k}=${req.body[k]}`)
+    .join('\n');
+
+  // Генерируем секретный ключ
+  const secretKey = crypto.createHmac('sha256', 'WebAppData')
+                          .update(process.env.BOT_TOKEN)
+                          .digest();
+
+  // Считаем хэш
+  const calculatedHash = crypto.createHmac('sha256', secretKey)
+                               .update(dataCheckString)
+                               .digest('hex');
+
+  if (calculatedHash !== hash) {
+    return res.status(401).json({ error: 'Неверный хэш' });
+  }
+
+  // Проверяем, истёк ли срок действия данных (в течение 1 часа)
+  const timestamp = Math.floor(Date.now() / 1000);
+  if (timestamp - auth_date > 86400) { // 24 часа
+    return res.status(401).json({ error: 'Срок действия данных истёк' });
+  }
+
+  try {
+    // Ищем пользователя
+    let result = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [id]);
+    if (result.rows.length === 0) {
+      // Регистрация нового пользователя
+      result = await pool.query(
+        'INSERT INTO users (telegram_id, username, avatar) VALUES ($1, $2, $3) RETURNING *',
+        [id, first_name, photo_url]
+      );
+    }
+
+    const user = result.rows[0];
+
+    // Генерируем JWT
+    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({ token, user: { id: user.id, username: user.username, avatar: user.avatar } });
+  } catch (err) {
+    console.error('Ошибка авторизации:', err);
+    res.status(500).json({ error: 'Ошибка авторизации' });
+  }
 });
 
 // Middleware
