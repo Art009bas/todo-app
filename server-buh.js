@@ -76,8 +76,99 @@ app.use(express.json({ limit: '10mb' }));
 // Защита существующих маршрутов
 const authenticateJWT = require('./middleware/authMiddleware');
 
-app.get('/api/reports', authenticateJWT, async (req, res) => { ... });
-app.post('/api/reports', authenticateJWT, async (req, res) => { ... });
+app.get('/api/reports', authenticateJWT, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM reports ORDER BY date DESC');
+    res.json(rows);
+  } catch (err) {
+    console.error('Ошибка получения отчетов:', err);
+    res.status(500).json({ error: 'Не удалось загрузить отчеты' });
+  }
+});
+app.post('/api/reports', authenticateJWT, async (req, res) => {
+  const { amount, date, paymentMethod, status, selfPaid, comment, fileName, fileSize, fileType, fileData } = req.body;
+
+  if (!amount || !date || !paymentMethod) {
+    return res.status(400).json({ error: 'Обязательные поля: amount, date, paymentMethod' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO reports 
+      (amount, date, payment_method, status, self_paid, comment, file_name, file_size, file_type, file_data) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+      RETURNING *`,
+      [
+        amount, 
+        date, 
+        paymentMethod, 
+        status || 'not_ordered', 
+        selfPaid || false, 
+        comment || '', 
+        fileName || '', 
+        fileSize || '', 
+        fileType || '', 
+        fileData || ''
+      ]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error('Ошибка создания отчета:', err);
+    res.status(500).json({ error: 'Не удалось сохранить отчет' });
+  }
+});
+
+app.put('/api/reports/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  const { amount, date, paymentMethod, status, selfPaid, comment, fileName, fileSize, fileType, fileData } = req.body;
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE reports 
+      SET amount = $1, date = $2, payment_method = $3, status = $4, self_paid = $5, 
+          comment = $6, file_name = $7, file_size = $8, file_type = $9, file_data = $10,
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $11 
+      RETURNING *`,
+      [
+        amount, 
+        date, 
+        paymentMethod, 
+        status, 
+        selfPaid, 
+        comment, 
+        fileName, 
+        fileSize, 
+        fileType, 
+        fileData, 
+        id
+      ]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Отчёт не найден' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Ошибка обновления отчета:', err);
+    res.status(500).json({ error: 'Не удалось обновить отчет' });
+  }
+});
+
+app.delete('/api/reports/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { rowCount } = await pool.query('DELETE FROM reports WHERE id = $1', [id]);
+    if (rowCount === 0) {
+      return res.status(404).json({ error: 'Отчёт не найден' });
+    }
+    res.status(204).end();
+  } catch (err) {
+    console.error('Ошибка удаления отчета:', err);
+    res.status(500).json({ error: 'Не удалось удалить отчет' });
+  }
+});
 
 // Инициализация базы данных
 // Проверка и создание таблиц reports и users
