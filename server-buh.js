@@ -3,6 +3,11 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 1001;
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+
+// Секретный ключ для подписи токена
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
 // Подключение к PostgreSQL
 const pool = new Pool({
