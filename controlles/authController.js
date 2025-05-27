@@ -1,4 +1,3 @@
-// controllers/authController.js
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
@@ -10,7 +9,7 @@ const pool = new Pool({
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
-// Регистрация
+// Регистрация пользователя
 exports.register = async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Введите логин и пароль' });
@@ -29,7 +28,7 @@ exports.register = async (req, res) => {
   }
 };
 
-// Вход
+// Авторизация (вход)
 exports.login = async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Введите логин и пароль' });
