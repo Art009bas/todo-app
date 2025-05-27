@@ -266,6 +266,9 @@ app.get('/api/reports/stats', async (req, res) => {
   }
 });
 
+const authRoutes = require('./routes/authRoutes');
+app.use('/api', authRoutes);
+
 // Запуск сервера
 app.listen(port, () => {
   console.log(`Сервер запущен на http://localhost:${port}`);
