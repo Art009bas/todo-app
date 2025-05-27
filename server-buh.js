@@ -20,16 +20,18 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // Инициализация базы данных
+// Проверка и создание таблиц reports и users
 async function initializeDatabase() {
   try {
-    const tableExists = await pool.query(`
+    // Создание таблицы reports (если ещё не создана)
+    const reportsExist = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_name = 'reports'
       )
     `);
 
-    if (!tableExists.rows[0].exists) {
+    if (!reportsExist.rows[0].exists) {
       await pool.query(`
         CREATE TABLE reports (
           id SERIAL PRIMARY KEY,
@@ -50,6 +52,28 @@ async function initializeDatabase() {
       console.log('Таблица reports успешно создана');
     } else {
       console.log('Таблица reports уже существует');
+    }
+
+    // Создание таблицы users (если ещё не создана)
+    const usersExist = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'users'
+      )
+    `);
+
+    if (!usersExist.rows[0].exists) {
+      await pool.query(`
+        CREATE TABLE users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(50) UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('Таблица users успешно создана');
+    } else {
+      console.log('Таблица users уже существует');
     }
   } catch (err) {
     console.error('Ошибка при инициализации базы данных:', err);
