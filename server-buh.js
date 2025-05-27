@@ -1,24 +1,22 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
-
 const app = express();
 const port = process.env.PORT || 1001;
 
 // Подключение к PostgreSQL
 const pool = new Pool({
-  connectionString: 'postgresql://protokol_db_user:cHHaJl1IUJFjFrpuPWko41lsjjkEaukW@dpg-d0nki98dl3ps73acg24g-a/protokol_db',
+  connectionString: process.env.DATABASE_URL || 'postgresql://protokol_db_user:cHHaJl1IUJFjFrpuPWko41lsjjkEaukW@dpg-d0nki98dl3ps73acg24g-a/protokol_db',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Увеличиваем лимит для загрузки файлов
+app.use(express.json({ limit: '10mb' }));
 
-// Функция для инициализации базы данных
+// Инициализация базы данных
 async function initializeDatabase() {
   try {
-    // Проверяем существование таблицы
     const tableExists = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -27,7 +25,6 @@ async function initializeDatabase() {
     `);
 
     if (!tableExists.rows[0].exists) {
-      // Создаем таблицу если она не существует
       await pool.query(`
         CREATE TABLE reports (
           id SERIAL PRIMARY KEY,
@@ -54,7 +51,7 @@ async function initializeDatabase() {
   }
 }
 
-// Инициализируем базу данных при запуске сервера
+// Запуск инициализации базы данных
 initializeDatabase();
 
 // Маршруты API
@@ -63,16 +60,16 @@ app.get('/api/reports', async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM reports ORDER BY date DESC');
     res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('Ошибка получения отчетов:', err);
+    res.status(500).json({ error: 'Не удалось загрузить отчеты' });
   }
 });
 
 app.post('/api/reports', async (req, res) => {
-  const { amount, date, payment_method, status, self_paid, comment, file_name, file_size, file_type, file_data } = req.body;
+  const { amount, date, paymentMethod, status, selfPaid, comment, fileName, fileSize, fileType, fileData } = req.body;
   
-  if (!amount || !date || !payment_method) {
-    return res.status(400).json({ error: 'Обязательные поля: amount, date, payment_method' });
+  if (!amount || !date || !paymentMethod) {
+    return res.status(400).json({ error: 'Обязательные поля: amount, date, paymentMethod' });
   }
 
   try {
@@ -81,19 +78,29 @@ app.post('/api/reports', async (req, res) => {
       (amount, date, payment_method, status, self_paid, comment, file_name, file_size, file_type, file_data) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
       RETURNING *`,
-      [amount, date, payment_method, status || 'not_ordered', self_paid || false, comment || '', 
-       file_name || '', file_size || '', file_type || '', file_data || '']
+      [
+        amount, 
+        date, 
+        paymentMethod, 
+        status || 'not_ordered', 
+        selfPaid || false, 
+        comment || '', 
+        fileName || '', 
+        fileSize || '', 
+        fileType || '', 
+        fileData || ''
+      ]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('Ошибка создания отчета:', err);
+    res.status(500).json({ error: 'Не удалось сохранить отчет' });
   }
 });
 
 app.put('/api/reports/:id', async (req, res) => {
   const { id } = req.params;
-  const { amount, date, payment_method, status, self_paid, comment, file_name, file_size, file_type, file_data } = req.body;
+  const { amount, date, paymentMethod, status, selfPaid, comment, fileName, fileSize, fileType, fileData } = req.body;
 
   try {
     const { rows } = await pool.query(
@@ -103,7 +110,19 @@ app.put('/api/reports/:id', async (req, res) => {
           updated_at = CURRENT_TIMESTAMP 
       WHERE id = $11 
       RETURNING *`,
-      [amount, date, payment_method, status, self_paid, comment, file_name, file_size, file_type, file_data, id]
+      [
+        amount, 
+        date, 
+        paymentMethod, 
+        status, 
+        selfPaid, 
+        comment, 
+        fileName, 
+        fileSize, 
+        fileType, 
+        fileData, 
+        id
+      ]
     );
     
     if (rows.length === 0) {
@@ -111,8 +130,8 @@ app.put('/api/reports/:id', async (req, res) => {
     }
     res.json(rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('Ошибка обновления отчета:', err);
+    res.status(500).json({ error: 'Не удалось обновить отчет' });
   }
 });
 
@@ -131,8 +150,8 @@ app.put('/api/reports/:id/status', async (req, res) => {
     }
     res.json(rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('Ошибка обновления статуса:', err);
+    res.status(500).json({ error: 'Не удалось обновить статус' });
   }
 });
 
@@ -146,8 +165,8 @@ app.delete('/api/reports/:id', async (req, res) => {
     }
     res.status(204).end();
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('Ошибка удаления отчета:', err);
+    res.status(500).json({ error: 'Не удалось удалить отчет' });
   }
 });
 
@@ -178,7 +197,7 @@ app.get('/api/reports/stats', async (req, res) => {
       WHERE self_paid = TRUE AND status != 'paid'
     `);
     
-    // Сумма по наличным
+    // Распределение по наличным
     const cashAmount = await pool.query(`
       SELECT SUM(amount) 
       FROM reports 
@@ -213,8 +232,8 @@ app.get('/api/reports/stats', async (req, res) => {
       monthlyData: monthlyData.rows
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('Ошибка получения статистики:', err);
+    res.status(500).json({ error: 'Не удалось загрузить статистику' });
   }
 });
 
