@@ -78,8 +78,6 @@ const authenticateJWT = require('./middleware/authMiddleware');
 
 app.get('/api/reports', authenticateJWT, async (req, res) => { ... });
 app.post('/api/reports', authenticateJWT, async (req, res) => { ... });
-app.put('/api/reports/:id', authenticateJWT, async (req, res) => { ... });
-app.delete('/api/reports/:id', authenticateJWT, async (req, res) => { ... });
 
 // Инициализация базы данных
 // Проверка и создание таблиц reports и users
