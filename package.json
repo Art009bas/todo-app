@@ -1,10 +1,11 @@
 {
   "name": "protokol-server",
   "version": "1.0.0",
-  "description": "Server for To-Do List and Accounting",
+  "description": "Server for To-Do List and Expense Reports",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:buh": "node server-buh.js"
   },
   "dependencies": {
     "dotenv": "^16.4.1",
